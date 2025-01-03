@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -74,7 +75,6 @@ public class PaymentProcessorImplWithSpyTest {
 
         when(accountDao.findById(10L)).thenReturn(Optional.of(sourceAccount));
         when(accountDao.findById(20L)).thenReturn(Optional.of(destinationAccount));
-//        when(accountDao.findById(30L)).thenReturn(Optional.of(destinationAccount));
 
         paymentProcessor.makeTransfer(sourceAgreement, destinationAgreement,
                 0, 0, BigDecimal.ONE);
@@ -82,6 +82,48 @@ public class PaymentProcessorImplWithSpyTest {
         assertEquals(new BigDecimal(9), sourceAccount.getAmount());
         assertEquals(BigDecimal.ONE, destinationAccount.getAmount());
 
+    }
+
+
+    @Test
+    public void testMakeTransferWithComission(){
+        Agreement sourceAgreement = new Agreement();
+        sourceAgreement.setId(1L);
+
+        Agreement destinationAgreement = new Agreement();
+        destinationAgreement.setId(2L);
+
+        Account sourceAccount = new Account();
+        sourceAccount.setAmount(new BigDecimal(100));
+        sourceAccount.setType(0);
+        sourceAccount.setId(1L);
+
+        Account destinationAccount = new Account();
+        destinationAccount.setAmount(new BigDecimal(0));
+        destinationAccount.setType(0);
+        destinationAccount.setId(2L);
+
+        lenient().doReturn(List.of(sourceAccount)).when(accountService).getAccounts(argThat(new ArgumentMatcher<Agreement>() {
+            @Override
+            public boolean matches(Agreement argument) {
+                return argument != null && argument.getId() == 1L;
+            }
+        }));
+
+        lenient().doReturn(List.of(destinationAccount)).when(accountService).getAccounts(argThat(new ArgumentMatcher<Agreement>() {
+            @Override
+            public boolean matches(Agreement argument) {
+                return argument != null && argument.getId() == 2L;
+            }
+        }));
+
+        when(accountDao.findById(eq(1L))).thenReturn(Optional.of(sourceAccount));
+        when(accountDao.save(any())).thenReturn(sourceAccount);
+        when(accountDao.findById(eq(2L))).thenReturn(Optional.of(destinationAccount));
+        when(accountDao.save(any())).thenReturn(destinationAccount);
+        boolean result = paymentProcessor.makeTransferWithComission(sourceAgreement, destinationAgreement, 0,
+                0, new BigDecimal(100), new BigDecimal(1));
+        assertTrue(result);
     }
 
 }
